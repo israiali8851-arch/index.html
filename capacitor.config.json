@@ -1,0 +1,6 @@
+{
+  "appId": "com.israiali88.sharepal",
+  "appName": "SharePal Pro",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
