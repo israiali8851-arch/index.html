@@ -1,7 +1,7 @@
 {
   "name": "sharepal-pro",
   "version": "1.0.0",
-  "description": "Offline Sharing App",
+  "description": "Offline Sharing App with Gallery Access",
   "main": "index.html",
   "scripts": {
     "build": "mkdir -p dist && cp index.html dist/"
@@ -9,6 +9,11 @@
   "dependencies": {
     "@capacitor/android": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0"
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/filesystem": "^6.0.0",
+    "@capacitor/device": "^6.0.0",
+    "@capacitor-community/media": "^6.0.0",
+    "typescript": "^5.0.0"
   }
 }
+
