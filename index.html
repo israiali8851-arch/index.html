@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SharePal Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .active-tab { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: bold; }
+        .file-card { transition: all 0.2s; }
+        .file-card:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div id="home-screen" class="min-h-screen flex flex-col items-center justify-center space-y-10">
+        <h1 class="text-4xl font-bold text-blue-600">SharePal</h1>
+        <div class="flex space-x-6">
+            <button onclick="showSelection()" class="bg-blue-500 text-white w-32 h-32 rounded-2xl shadow-lg flex flex-col items-center justify-center text-xl font-semibold">
+                <span class="text-4xl mb-2">↑</span> SEND
+            </button>
+            <button class="bg-green-500 text-white w-32 h-32 rounded-2xl shadow-lg flex flex-col items-center justify-center text-xl font-semibold">
+                <span class="text-4xl mb-2">↓</span> RECEIVE
+            </button>
+        </div>
+    </div>
+
+    <div id="selection-screen" class="hidden min-h-screen flex flex-col">
+        <div class="bg-white shadow-md sticky top-0 z-10">
+            <div class="flex overflow-x-auto p-4 space-x-8 no-scrollbar">
+                <button onclick="switchTab('apps')" id="tab-apps" class="active-tab">APPS</button>
+                <button onclick="switchTab('videos')" id="tab-videos">VIDEOS</button>
+                <button onclick="switchTab('photos')" id="tab-photos">PHOTOS</button>
+                <button onclick="switchTab('music')" id="tab-music">MUSIC</button>
+            </div>
+        </div>
+
+        <div id="file-list" class="flex-1 p-4 grid grid-cols-3 gap-4 overflow-y-auto">
+            </div>
+
+        <div class="bg-white p-4 shadow-inner flex justify-between items-center sticky bottom-0">
+            <span id="selected-count" class="font-medium">Selected: 0</span>
+            <button class="bg-blue-600 text-white px-8 py-2 rounded-full font-bold">SEND</button>
+        </div>
+    </div>
+
+    <div id="preview-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4">
+        <div class="w-full max-w-md">
+            <p class="text-white text-center mb-4">Preview Mode</p>
+            <video id="preview-video" controls class="w-full rounded-lg shadow-2xl"></video>
+            <button onclick="closePreview()" class="mt-6 w-full bg-red-500 text-white py-2 rounded">CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedCount = 0;
+
+        function showSelection() {
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('selection-screen').classList.remove('hidden');
+            switchTab('videos'); // Default tab
+        }
+
+        function switchTab(tab) {
+            // Update UI tabs
+            ['apps', 'videos', 'photos', 'music'].forEach(t => {
+                document.getElementById('tab-'+t).className = (t === tab) ? 'active-tab' : '';
+            });
+
+            // Mock Data (Real app will fetch from phone)
+            const list = document.getElementById('file-list');
+            list.innerHTML = '';
+            for(let i=1; i<=12; i++) {
+                const item = document.createElement('div');
+                item.className = 'file-card bg-white p-2 rounded-lg shadow relative';
+                item.innerHTML = `
+                    <div class="h-20 bg-gray-200 rounded mb-1 flex items-center justify-center text-xs">Thumbnail</div>
+                    <p class="text-xs truncate">${tab}_file_${i}.mp4</p>
+                    <input type="checkbox" onchange="updateCount(this)" class="absolute top-1 right-1 w-5 h-5">
+                `;
+                
+                // Long press event
+                let timer;
+                item.onmousedown = () => timer = setTimeout(() => openPreview(tab), 700);
+                item.onmouseup = () => clearTimeout(timer);
+                item.ontouchstart = () => timer = setTimeout(() => openPreview(tab), 700);
+                item.ontouchend = () => clearTimeout(timer);
+
+                list.appendChild(item);
+            }
+        }
+
+        function updateCount(checkbox) {
+            selectedCount += checkbox.checked ? 1 : -1;
+            document.getElementById('selected-count').innerText = "Selected: " + selectedCount;
+        }
+
+        function openPreview(tab) {
+            document.getElementById('preview-modal').classList.remove('hidden');
+            // For demo, using a sample video
+            document.getElementById('preview-video').src = "https://www.w3schools.com/html/mov_bbb.mp4";
+        }
+
+        function closePreview() {
+            document.getElementById('preview-modal').classList.add('hidden');
+            document.getElementById('preview-video').pause();
+        }
+    </script>
+</body>
+</html>
+
