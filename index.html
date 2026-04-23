@@ -5,107 +5,117 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SharePal Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         .active-tab { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: bold; }
-        .file-card { transition: all 0.2s; }
-        .file-card:active { transform: scale(0.95); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
 
     <div id="home-screen" class="min-h-screen flex flex-col items-center justify-center space-y-10">
-        <h1 class="text-4xl font-bold text-blue-600">SharePal</h1>
+        <h1 class="text-4xl font-bold text-blue-600 italic">SharePal Pro</h1>
         <div class="flex space-x-6">
-            <button onclick="showSelection()" class="bg-blue-500 text-white w-32 h-32 rounded-2xl shadow-lg flex flex-col items-center justify-center text-xl font-semibold">
-                <span class="text-4xl mb-2">↑</span> SEND
+            <button onclick="showSelection()" class="bg-blue-600 text-white w-32 h-32 rounded-3xl shadow-xl flex flex-col items-center justify-center">
+                <span class="text-4xl mb-1">↑</span><span class="font-bold">SEND</span>
             </button>
-            <button class="bg-green-500 text-white w-32 h-32 rounded-2xl shadow-lg flex flex-col items-center justify-center text-xl font-semibold">
-                <span class="text-4xl mb-2">↓</span> RECEIVE
+            <button onclick="openReceive()" class="bg-green-600 text-white w-32 h-32 rounded-3xl shadow-xl flex flex-col items-center justify-center">
+                <span class="text-4xl mb-1">↓</span><span class="font-bold">RECEIVE</span>
             </button>
         </div>
     </div>
 
-    <div id="selection-screen" class="hidden min-h-screen flex flex-col">
-        <div class="bg-white shadow-md sticky top-0 z-10">
-            <div class="flex overflow-x-auto p-4 space-x-8 no-scrollbar">
-                <button onclick="switchTab('apps')" id="tab-apps" class="active-tab">APPS</button>
-                <button onclick="switchTab('videos')" id="tab-videos">VIDEOS</button>
-                <button onclick="switchTab('photos')" id="tab-photos">PHOTOS</button>
-                <button onclick="switchTab('music')" id="tab-music">MUSIC</button>
-            </div>
+    <div id="selection-screen" class="hidden min-h-screen flex flex-col bg-white">
+        <div class="p-4 bg-blue-600 text-white flex items-center justify-between">
+            <button onclick="goHome()" class="text-xl">←</button>
+            <span class="font-bold">Select Files</span>
+            <span></span>
         </div>
-
-        <div id="file-list" class="flex-1 p-4 grid grid-cols-3 gap-4 overflow-y-auto">
-            </div>
-
-        <div class="bg-white p-4 shadow-inner flex justify-between items-center sticky bottom-0">
-            <span id="selected-count" class="font-medium">Selected: 0</span>
-            <button class="bg-blue-600 text-white px-8 py-2 rounded-full font-bold">SEND</button>
+        <div class="flex overflow-x-auto p-4 space-x-6 border-b no-scrollbar">
+            <button onclick="switchTab('apps')" id="tab-apps" class="active-tab">APPS</button>
+            <button onclick="switchTab('videos')" id="tab-videos">VIDEOS</button>
+            <button onclick="switchTab('photos')" id="tab-photos">PHOTOS</button>
+            <button onclick="switchTab('music')" id="tab-music">MUSIC</button>
+        </div>
+        <div id="file-list" class="flex-1 p-4 grid grid-cols-3 gap-4 overflow-y-auto bg-gray-50"></div>
+        <div class="p-4 border-t flex justify-between items-center">
+            <span id="selected-count">Selected: 0</span>
+            <button onclick="openScanner()" class="bg-blue-600 text-white px-10 py-2 rounded-full font-bold">NEXT (SCAN)</button>
         </div>
     </div>
 
-    <div id="preview-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4">
-        <div class="w-full max-w-md">
-            <p class="text-white text-center mb-4">Preview Mode</p>
-            <video id="preview-video" controls class="w-full rounded-lg shadow-2xl"></video>
-            <button onclick="closePreview()" class="mt-6 w-full bg-red-500 text-white py-2 rounded">CLOSE</button>
+    <div id="receive-screen" class="hidden min-h-screen flex flex-col items-center justify-center bg-white p-6">
+        <h2 class="text-2xl font-bold mb-8">Scan to Connect</h2>
+        <div id="qrcode" class="p-4 border-8 border-blue-100 rounded-2xl"></div>
+        <p class="mt-6 text-gray-500 animate-pulse">Waiting for sender...</p>
+        <button onclick="goHome()" class="mt-12 text-red-500 font-bold border border-red-500 px-6 py-2 rounded-lg">CANCEL</button>
+    </div>
+
+    <div id="scanner-screen" class="hidden min-h-screen bg-black flex flex-col">
+        <video id="video" class="w-full h-3/4 object-cover"></video>
+        <div class="flex-1 flex flex-col items-center justify-center text-white p-4">
+            <div class="border-2 border-dashed border-white w-48 h-48 mb-4 rounded-lg opacity-50"></div>
+            <p>Align the QR Code to connect</p>
+            <button onclick="goHome()" class="mt-4 bg-white text-black px-6 py-2 rounded-lg">BACK</button>
         </div>
     </div>
 
     <script>
         let selectedCount = 0;
+        const codeReader = new ZXing.BrowserQRCodeReader();
+
+        function goHome() {
+            location.reload(); // Sab reset karne ke liye simple tareeka
+        }
 
         function showSelection() {
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('selection-screen').classList.remove('hidden');
-            switchTab('videos'); // Default tab
+            switchTab('videos');
+        }
+
+        function openReceive() {
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('receive-screen').classList.remove('hidden');
+            document.getElementById('qrcode').innerHTML = "";
+            new QRCode(document.getElementById("qrcode"), "SHAREPAL-PRO-ID-" + Math.floor(Math.random()*1000));
+        }
+
+        function openScanner() {
+            if(selectedCount === 0) { alert("Please select a file first!"); return; }
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('scanner-screen').classList.remove('hidden');
+            
+            codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+                if (result) {
+                    alert("Connected Successfully! Sending files...");
+                    codeReader.reset();
+                    goHome();
+                }
+            });
         }
 
         function switchTab(tab) {
-            // Update UI tabs
             ['apps', 'videos', 'photos', 'music'].forEach(t => {
                 document.getElementById('tab-'+t).className = (t === tab) ? 'active-tab' : '';
             });
-
-            // Mock Data (Real app will fetch from phone)
             const list = document.getElementById('file-list');
             list.innerHTML = '';
-            for(let i=1; i<=12; i++) {
-                const item = document.createElement('div');
-                item.className = 'file-card bg-white p-2 rounded-lg shadow relative';
-                item.innerHTML = `
-                    <div class="h-20 bg-gray-200 rounded mb-1 flex items-center justify-center text-xs">Thumbnail</div>
-                    <p class="text-xs truncate">${tab}_file_${i}.mp4</p>
-                    <input type="checkbox" onchange="updateCount(this)" class="absolute top-1 right-1 w-5 h-5">
-                `;
-                
-                // Long press event
-                let timer;
-                item.onmousedown = () => timer = setTimeout(() => openPreview(tab), 700);
-                item.onmouseup = () => clearTimeout(timer);
-                item.ontouchstart = () => timer = setTimeout(() => openPreview(tab), 700);
-                item.ontouchend = () => clearTimeout(timer);
-
-                list.appendChild(item);
+            for(let i=1; i<=9; i++) {
+                list.innerHTML += `
+                    <div class="bg-white p-2 rounded shadow relative border">
+                        <div class="h-16 bg-gray-100 flex items-center justify-center text-[10px] uppercase font-bold text-gray-400">${tab}</div>
+                        <p class="text-[10px] truncate mt-1">Sample_${tab}_${i}</p>
+                        <input type="checkbox" onchange="updateCount(this)" class="absolute top-1 right-1 w-5 h-5">
+                    </div>`;
             }
         }
 
-        function updateCount(checkbox) {
-            selectedCount += checkbox.checked ? 1 : -1;
+        function updateCount(cb) {
+            selectedCount += cb.checked ? 1 : -1;
             document.getElementById('selected-count').innerText = "Selected: " + selectedCount;
-        }
-
-        function openPreview(tab) {
-            document.getElementById('preview-modal').classList.remove('hidden');
-            // For demo, using a sample video
-            document.getElementById('preview-video').src = "https://www.w3schools.com/html/mov_bbb.mp4";
-        }
-
-        function closePreview() {
-            document.getElementById('preview-modal').classList.add('hidden');
-            document.getElementById('preview-video').pause();
         }
     </script>
 </body>
 </html>
-
