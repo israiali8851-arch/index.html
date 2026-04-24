@@ -1,23 +1,14 @@
-<!-- ===== INTERNET (Send / Receive files) ===== -->
-<uses-permission android:name="android.permission.INTERNET"/>
-<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-
-<!-- ===== WiFi / Hotspot (SHAREit type app) ===== -->
-<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
-<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-
-<!-- ===== Android 13+ Media Permissions ===== -->
+<!-- Android 13+ permissions -->
 <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
 <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
 
-<!-- ===== Android 12 and below ===== -->
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+<!-- Android 12 और नीचे -->
+<uses-permission
+    android:name="android.permission.READ_EXTERNAL_STORAGE"
     android:maxSdkVersion="32"/>
 
-<!-- ===== Old phones (Android 9 and below) ===== -->
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+<!-- अगर app file save भी करती है -->
+<uses-permission
+    android:name="android.permission.WRITE_EXTERNAL_STORAGE"
     android:maxSdkVersion="28"/>
