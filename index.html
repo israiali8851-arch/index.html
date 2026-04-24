@@ -20,10 +20,10 @@
         <h1 class="text-4xl font-bold text-blue-600 italic">SharePal Pro</h1>
         <div class="flex space-x-6">
             <button onclick="showSelection()" class="bg-blue-600 text-white w-32 h-32 rounded-3xl shadow-xl flex flex-col items-center justify-center">
-                <span class="text-4xl mb-1">↑</span><span class="font-bold">SEND</span>
+                <span class="text-4xl mb-1 text-white">↑</span><span class="font-bold text-white">SEND</span>
             </button>
             <button onclick="openReceive()" class="bg-green-600 text-white w-32 h-32 rounded-3xl shadow-xl flex flex-col items-center justify-center">
-                <span class="text-4xl mb-1">↓</span><span class="font-bold">RECEIVE</span>
+                <span class="text-4xl mb-1 text-white">↓</span><span class="font-bold text-white">RECEIVE</span>
             </button>
         </div>
     </div>
@@ -31,27 +31,21 @@
     <div id="selection-screen" class="hidden min-h-screen flex flex-col bg-white">
         <div class="p-4 bg-blue-600 text-white flex items-center justify-between">
             <button onclick="goHome()" class="text-xl">←</button>
-            <span class="font-bold text-black">Select Files</span>
+            <span class="font-bold">Select Files</span>
             <span></span>
         </div>
-        <div class="flex overflow-x-auto p-4 space-x-6 border-b bg-white text-gray-500">
+        <div class="flex overflow-x-auto p-4 space-x-6 border-b text-gray-600">
             <button onclick="switchTab('apps')" id="tab-apps">APPS</button>
-            <button onclick="switchTab('videos')" id="tab-videos" class="active-tab">VIDEOS</button>
+            <button onclick="switchTab('videos')" id="tab-videos">VIDEOS</button>
             <button onclick="switchTab('photos')" id="tab-photos">PHOTOS</button>
             <button onclick="switchTab('music')" id="tab-music">MUSIC</button>
         </div>
         <div id="file-list" class="flex-1 p-4 grid grid-cols-3 gap-4 overflow-y-auto bg-gray-50 text-black">
             </div>
         <div class="p-4 border-t flex justify-between items-center bg-white">
-            <span id="selected-count" class="font-bold text-black">Selected: 0</span>
-            <button onclick="openScanner()" class="bg-blue-600 text-white px-10 py-2 rounded-full font-bold">NEXT (SCAN)</button>
+            <span id="selected-count" class="font-bold text-black text-sm">Selected: 0</span>
+            <button onclick="openScanner()" class="bg-blue-600 text-white px-8 py-2 rounded-full font-bold text-sm">NEXT (SCAN)</button>
         </div>
-    </div>
-
-    <div id="receive-screen" class="hidden min-h-screen flex flex-col items-center justify-center bg-white p-6">
-        <h2 class="text-2xl font-bold mb-8 text-black">Scan to Connect</h2>
-        <div id="qrcode" class="p-4 border-4 border-blue-100 rounded-xl"></div>
-        <button onclick="goHome()" class="mt-12 text-red-500 font-bold">CANCEL</button>
     </div>
 
     <div id="scanner-screen" class="hidden min-h-screen bg-black flex flex-col items-center justify-center relative">
@@ -63,22 +57,35 @@
         <button onclick="goHome()" class="mt-10 bg-white text-black px-8 py-2 rounded-lg z-10 font-bold">BACK</button>
     </div>
 
+    <div id="receive-screen" class="hidden min-h-screen flex flex-col items-center justify-center bg-white p-6">
+        <h2 class="text-2xl font-bold mb-8 text-black">Scan to Connect</h2>
+        <div id="qrcode" class="p-4 border-4 border-blue-100 rounded-xl"></div>
+        <button onclick="goHome()" class="mt-12 text-red-500 font-bold">CANCEL</button>
+    </div>
+
     <script>
-        const { Filesystem, Directory } = capacitorExports.Filesystem;
+        // Initialization Logic
+        let Filesystem, Directory;
         let selectedCount = 0;
 
         function goHome() { location.reload(); }
 
         window.onload = async () => {
-            try {
-                await Filesystem.requestPermissions();
-            } catch (e) { console.log("Permission system not ready"); }
+            // Capacitor ready hone ka check
+            const checkCap = setInterval(async () => {
+                if (window.Capacitor && window.Capacitor.Plugins) {
+                    Filesystem = window.Capacitor.Plugins.Filesystem;
+                    Directory = window.Capacitor.Plugins.Directory;
+                    clearInterval(checkCap);
+                    try { await Filesystem.requestPermissions(); } catch(e){}
+                }
+            }, 500);
         };
 
         function showSelection() {
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('selection-screen').classList.remove('hidden');
-            switchTab('videos');
+            setTimeout(() => { switchTab('videos'); }, 800);
         }
 
         async function switchTab(tab) {
@@ -88,16 +95,16 @@
             });
 
             const list = document.getElementById('file-list');
-            list.innerHTML = '<p class="col-span-3 text-center py-10 text-black">Scanning Storage...</p>';
+            list.innerHTML = '<p class="col-span-3 text-center py-10 text-black">Searching...</p>';
+
+            if (!Filesystem) {
+                list.innerHTML = '<p class="col-span-3 text-center py-10 text-red-500 text-xs">System starting... please wait a second.</p>';
+                return;
+            }
 
             try {
-                let folder = '';
-                // Naye Android phones ke liye sahi paths
-                if (tab === 'videos') folder = 'DCIM/Camera';
-                else if (tab === 'photos') folder = 'Pictures';
-                else if (tab === 'music') folder = 'Music';
-                else folder = 'Download';
-
+                let folder = (tab === 'videos') ? 'DCIM/Camera' : (tab === 'photos') ? 'Pictures' : (tab === 'music') ? 'Music' : 'Download';
+                
                 const result = await Filesystem.readdir({
                     path: folder,
                     directory: Directory.ExternalStorage
@@ -105,25 +112,22 @@
 
                 list.innerHTML = '';
                 if (!result.files || result.files.length === 0) {
-                    list.innerHTML = `<p class="col-span-3 text-center py-10 text-gray-500 italic">No ${tab} found in ${folder}.</p>`;
+                    list.innerHTML = `<p class="col-span-3 text-center py-10 text-gray-500 text-xs">No ${tab} in ${folder}</p>`;
                     return;
                 }
 
                 result.files.forEach(file => {
                     list.innerHTML += `
-                        <div class="bg-white p-2 rounded-lg shadow border border-gray-200 relative flex flex-col items-center">
+                        <div class="bg-white p-2 rounded-lg shadow border border-gray-100 relative flex flex-col items-center">
                             <div class="w-full h-12 bg-blue-50 rounded flex items-center justify-center mb-1">
-                                <span class="text-[10px] text-blue-400 font-bold">${tab.toUpperCase()}</span>
+                                <span class="text-[8px] text-blue-400 font-bold">${tab.toUpperCase()}</span>
                             </div>
-                            <p class="text-[9px] truncate w-full text-center text-black font-medium">${file.name}</p>
-                            <input type="checkbox" onchange="updateCount(this)" class="absolute top-1 right-1 w-5 h-5 accent-blue-600">
+                            <p class="text-[8px] truncate w-full text-center text-black">${file.name}</p>
+                            <input type="checkbox" onchange="updateCount(this)" class="absolute top-1 right-1 w-4 h-4 accent-blue-600">
                         </div>`;
                 });
             } catch (e) {
-                list.innerHTML = `<div class="col-span-3 text-center p-4">
-                    <p class="text-red-500 text-xs font-bold mb-2">Access Error: ${e.message}</p>
-                    <p class="text-gray-500 text-[10px]">1. Go to App Settings<br>2. Permissions > Photos & Videos<br>3. Select 'Always Allow All'</p>
-                </div>`;
+                list.innerHTML = `<p class="col-span-3 text-center p-4 text-red-500 text-[10px]">Error: ${e.message}</p>`;
             }
         }
 
@@ -136,7 +140,7 @@
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('receive-screen').classList.remove('hidden');
             document.getElementById('qrcode').innerHTML = "";
-            new QRCode(document.getElementById("qrcode"), "SHAREPAL-PRO-" + Math.random().toString(36).substr(2, 5));
+            new QRCode(document.getElementById("qrcode"), "SHAREPAL-" + Math.random().toString(36).substr(2, 4));
         }
 
         async function openScanner() {
@@ -144,14 +148,10 @@
             document.getElementById('scanner-screen').classList.remove('hidden');
             try {
                 const codeReader = new ZXing.BrowserQRCodeReader();
-                const videoElement = document.getElementById('video');
-                codeReader.decodeFromVideoDevice(null, videoElement, (result, err) => {
-                    if (result) {
-                        alert("Connected: " + result.text);
-                        goHome();
-                    }
+                codeReader.decodeFromVideoDevice(null, 'video', (result) => {
+                    if (result) { alert("Link: " + result.text); goHome(); }
                 });
-            } catch (err) { console.error(err); }
+            } catch (e) { alert("Camera error"); }
         }
     </script>
 </body>
