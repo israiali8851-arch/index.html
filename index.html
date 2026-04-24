@@ -64,95 +64,117 @@
     </div>
 
     <script>
-        // Initialization Logic
-        let Filesystem, Directory;
-        let selectedCount = 0;
+    let Filesystem, Directory;
+    let selectedCount = 0;
 
-        function goHome() { location.reload(); }
+    function goHome() { location.reload(); }
 
-        window.onload = async () => {
-            // Capacitor ready hone ka check
-            const checkCap = setInterval(async () => {
-                if (window.Capacitor && window.Capacitor.Plugins) {
-                    Filesystem = window.Capacitor.Plugins.Filesystem;
-                    Directory = window.Capacitor.Plugins.Directory;
-                    clearInterval(checkCap);
-                    try { await Filesystem.requestPermissions(); } catch(e){}
+    // Sabse tagda initialization jo naye phones ke liye hai
+    window.onload = async () => {
+        const checkCapacitor = setInterval(async () => {
+            // Check karein ki kya Capacitor load ho gaya hai
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+                Filesystem = window.Capacitor.Plugins.Filesystem;
+                Directory = window.Capacitor.Plugins.Directory;
+                
+                console.log("Capacitor Ready!");
+                clearInterval(checkCapacitor); // Loop band karein
+
+                try {
+                    // Naye phones ke liye permission request
+                    await Filesystem.requestPermissions();
+                } catch (e) {
+                    console.log("Permission Error:", e);
                 }
-            }, 500);
-        };
+            }
+        }, 100); // Har 100ms mein check karega
+    };
 
-        function showSelection() {
-            document.getElementById('home-screen').classList.add('hidden');
-            document.getElementById('selection-screen').classList.remove('hidden');
-            setTimeout(() => { switchTab('videos'); }, 800);
+    function showSelection() {
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('selection-screen').classList.remove('hidden');
+        
+        // Tab tak wait karein jab tak Filesystem variable bhar na jaye
+        const waitInit = setInterval(() => {
+            if (Filesystem && Directory) {
+                clearInterval(waitInit);
+                switchTab('videos');
+            }
+        }, 100);
+    }
+
+    async function switchTab(tab) {
+        ['apps', 'videos', 'photos', 'music'].forEach(t => {
+            const el = document.getElementById('tab-'+t);
+            if(el) el.className = (t === tab) ? 'active-tab' : '';
+        });
+
+        const list = document.getElementById('file-list');
+        list.innerHTML = '<p class="col-span-3 text-center py-10 text-black font-bold">Scanning...</p>';
+
+        // Yahan Error handling tagdi kar di hai
+        if (!Filesystem || !Directory) {
+            list.innerHTML = '<p class="col-span-3 text-center py-10 text-red-500 text-xs">System starting... please wait 2 seconds.</p>';
+            return;
         }
 
-        async function switchTab(tab) {
-            ['apps', 'videos', 'photos', 'music'].forEach(t => {
-                const el = document.getElementById('tab-'+t);
-                if(el) el.className = (t === tab) ? 'active-tab' : '';
+        try {
+            let folder = '';
+            // Naye Android (11+) mein standard paths
+            if (tab === 'videos') folder = 'DCIM/Camera';
+            else if (tab === 'photos') folder = 'Pictures';
+            else if (tab === 'music') folder = 'Music';
+            else folder = 'Download';
+
+            const result = await Filesystem.readdir({
+                path: folder,
+                directory: Directory.ExternalStorage // Ab ye undefined nahi aayega
             });
 
-            const list = document.getElementById('file-list');
-            list.innerHTML = '<p class="col-span-3 text-center py-10 text-black">Searching...</p>';
-
-            if (!Filesystem) {
-                list.innerHTML = '<p class="col-span-3 text-center py-10 text-red-500 text-xs">System starting... please wait a second.</p>';
+            list.innerHTML = '';
+            if (!result.files || result.files.length === 0) {
+                list.innerHTML = `<p class="col-span-3 text-center py-10 text-gray-500 italic">No files in ${folder}</p>`;
                 return;
             }
 
-            try {
-                let folder = (tab === 'videos') ? 'DCIM/Camera' : (tab === 'photos') ? 'Pictures' : (tab === 'music') ? 'Music' : 'Download';
-                
-                const result = await Filesystem.readdir({
-                    path: folder,
-                    directory: Directory.ExternalStorage
-                });
-
-                list.innerHTML = '';
-                if (!result.files || result.files.length === 0) {
-                    list.innerHTML = `<p class="col-span-3 text-center py-10 text-gray-500 text-xs">No ${tab} in ${folder}</p>`;
-                    return;
-                }
-
-                result.files.forEach(file => {
-                    list.innerHTML += `
-                        <div class="bg-white p-2 rounded-lg shadow border border-gray-100 relative flex flex-col items-center">
-                            <div class="w-full h-12 bg-blue-50 rounded flex items-center justify-center mb-1">
-                                <span class="text-[8px] text-blue-400 font-bold">${tab.toUpperCase()}</span>
-                            </div>
-                            <p class="text-[8px] truncate w-full text-center text-black">${file.name}</p>
-                            <input type="checkbox" onchange="updateCount(this)" class="absolute top-1 right-1 w-4 h-4 accent-blue-600">
-                        </div>`;
-                });
-            } catch (e) {
-                list.innerHTML = `<p class="col-span-3 text-center p-4 text-red-500 text-[10px]">Error: ${e.message}</p>`;
-            }
+            result.files.forEach(file => {
+                list.innerHTML += `
+                    <div class="bg-white p-2 rounded-lg shadow border border-gray-200 relative flex flex-col items-center">
+                        <div class="w-full h-12 bg-blue-50 rounded flex items-center justify-center mb-1">
+                            <span class="text-[8px] text-blue-400 font-bold">${tab.toUpperCase()}</span>
+                        </div>
+                        <p class="text-[8px] truncate w-full text-center text-black font-medium">${file.name}</p>
+                        <input type="checkbox" onchange="updateCount(this)" class="absolute top-1 right-1 w-4 h-4 accent-blue-600">
+                    </div>`;
+            });
+        } catch (e) {
+            list.innerHTML = `<div class="col-span-3 text-center p-4">
+                <p class="text-red-500 text-[10px] font-bold">Error: ${e.message}</p>
+                <button onclick="switchTab('${tab}')" class="bg-blue-600 text-white px-4 py-1 rounded-full text-[10px] mt-2">Retry</button>
+            </div>`;
         }
+    }
 
-        function updateCount(cb) {
-            selectedCount += cb.checked ? 1 : -1;
-            document.getElementById('selected-count').innerText = "Selected: " + selectedCount;
-        }
+    function updateCount(cb) {
+        selectedCount += cb.checked ? 1 : -1;
+        document.getElementById('selected-count').innerText = "Selected: " + selectedCount;
+    }
 
-        function openReceive() {
-            document.getElementById('home-screen').classList.add('hidden');
-            document.getElementById('receive-screen').classList.remove('hidden');
-            document.getElementById('qrcode').innerHTML = "";
-            new QRCode(document.getElementById("qrcode"), "SHAREPAL-" + Math.random().toString(36).substr(2, 4));
-        }
+    function openReceive() {
+        document.getElementById('home-screen').classList.add('hidden');
+        document.getElementById('receive-screen').classList.remove('hidden');
+        document.getElementById('qrcode').innerHTML = "";
+        new QRCode(document.getElementById("qrcode"), "SHAREPAL-" + Math.random().toString(36).substr(2, 4));
+    }
 
-        async function openScanner() {
-            document.getElementById('selection-screen').classList.add('hidden');
-            document.getElementById('scanner-screen').classList.remove('hidden');
-            try {
-                const codeReader = new ZXing.BrowserQRCodeReader();
-                codeReader.decodeFromVideoDevice(null, 'video', (result) => {
-                    if (result) { alert("Link: " + result.text); goHome(); }
-                });
-            } catch (e) { alert("Camera error"); }
-        }
-    </script>
-</body>
-</html>
+    async function openScanner() {
+        document.getElementById('selection-screen').classList.add('hidden');
+        document.getElementById('scanner-screen').classList.remove('hidden');
+        try {
+            const codeReader = new ZXing.BrowserQRCodeReader();
+            codeReader.decodeFromVideoDevice(null, 'video', (result) => {
+                if (result) { alert("Connected!"); goHome(); }
+            });
+        } catch (e) { alert("Camera error"); }
+    }
+</script>
